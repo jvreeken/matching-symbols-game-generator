@@ -1,0 +1,53 @@
+@import '~semantic-ui-css/semantic.css';
+
+#root {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+
+  .pusher {
+    flex: 1
+  }
+}
+
+.ui {
+  &.header {
+    &.title {
+      font-size: 4em;
+      font-weight: normal;
+    }
+    &.subtitle {
+      font-size: 1.7em;
+      font-weight: normal;
+    }
+    &.instructions {
+      font-weight: normal;
+      margin: 1em 0;
+    }
+  }
+  &.segment {
+    &.header {
+      padding: 3em 0;
+      margin-bottom: 1em;
+    }
+    &.footer {
+      margin-top: 4em;
+      padding: 2em 0;
+    }
+  }
+  &.buttons {
+    .or {
+      text-transform: none;
+    }
+  }
+  &.divider {
+    &.horizontal.padded {
+      margin: 2em 0;
+    }
+  }
+  &.image {
+    &.preview {
+      cursor: url(./images/ui/remove-cursor.png), auto;
+    }
+  }
+}
