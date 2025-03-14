@@ -6,7 +6,7 @@ const HeaderComponent = () => (
     <Container text>
       <Header
         as="h1"
-        content="Dobble-like generator"
+        content="Matching Symbols Game Generator"
         inverted
         className="title"
       />
