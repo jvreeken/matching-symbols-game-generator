@@ -1,5 +1,4 @@
 import Ajv, { SchemaObject } from 'ajv';
-import Jimp from 'jimp';
 import JsPDF from 'jspdf';
 import chunk from 'lodash/chunk';
 import random from 'lodash/random';
@@ -25,8 +24,7 @@ export const plains = ([2, 3, 5, 7, 11] as Prime[]).map((n: Prime) => ({
  */
 export const generateCards = (n: Prime): number[][] => {
   const d = [...Array(n).keys()];
-
-  return shuffle([
+  const cards = shuffle([
     shuffle([...d, n]),
     ...d.flatMap(a => [
       shuffle([0, ...d.map(b => n + 1 + n * a + b)]),
@@ -35,6 +33,8 @@ export const generateCards = (n: Prime): number[][] => {
       ),
     ]),
   ]);
+  console.log('generateCards: Generated cards for n =', n, 'Total cards:', cards.length);
+  return cards;
 };
 
 /**
@@ -55,7 +55,11 @@ export const getImageRatio = (dataUrl: string): Promise<number> =>
   new Promise((resolve, reject) => {
     const img = new Image();
     img.onerror = reject;
-    img.onload = () => resolve(img.height / img.width);
+    img.onload = () => {
+      const ratio = img.height / img.width;
+      console.log('getImageRatio: Loaded image, ratio:', ratio);
+      resolve(ratio);
+    };
     img.src = dataUrl;
   });
 
@@ -71,7 +75,8 @@ export const sleep = (t = 0): Promise<never> =>
 export const generatePdf = async (
   images: CardImage[] = [],
   options: { n: Prime } & Settings,
-): Promise<JsPDF> => {
+): Promise<InstanceType<typeof JsPDF>> => {
+  console.log('generatePdf: Starting PDF generation with options:', options, 'and images length:', images.length);
   const {
     n, // No of plains
     pageWidth = 210, // A4
@@ -83,6 +88,7 @@ export const generatePdf = async (
 
   // Apply images to generated card sequences
   const cards = generateCards(n).map(card => card.map(s => images[s]));
+  console.log('generatePdf: Cards generated. Total card sets:', cards.length);
 
   // PDF sizes in mm
   const columnsPerPage = Math.floor(pageWidth / (cardRadius * 2));
@@ -91,26 +97,35 @@ export const generatePdf = async (
   const columnWidth = pageWidth / columnsPerPage;
   const rowHeight = pageHeight / rowsPerPage;
 
+  console.log('generatePdf: Columns per page:', columnsPerPage, 'Rows per page:', rowsPerPage, 'Cards per page:', cardsPerPage);
   const pdf = new JsPDF();
 
   // Split cards into pages
-  for (const [page, pageCards] of chunk(cards, cardsPerPage).entries()) {
+  const pages = chunk(cards, cardsPerPage);
+  console.log('generatePdf: Total pages:', pages.length);
+
+  for (const [page, pageCards] of pages.entries()) {
+    console.log('generatePdf: Processing page', page, 'with', pageCards.length, 'cards');
     if (page > 0) {
       pdf.addPage();
     }
 
     for (const [i, card] of pageCards.entries()) {
       const { x, y } = getCardMiddle(i, columnWidth, rowHeight);
+      console.log(`generatePdf: Processing card index ${i} at position (x: ${x}, y: ${y})`);
 
       // Draw outline
       pdf.circle(x, y, cardRadius, 'S');
 
       const symbols = arrangeSymbolsOnCard(card, symbolMargin, n);
+      console.log(`generatePdf: Arranged ${symbols.length} symbols for card index ${i}`);
 
       // Add symbols to pdf
       for (let s of symbols) {
         if (rotateSymbols) {
+          console.log('generatePdf: Rotating symbol with id:', s.image.id);
           s = await rotateSymbol(s);
+          console.log('generatePdf: Finished rotating symbol with id:', s.image.id);
         }
         pdf.addImage(
           s.image.base64src,
@@ -127,37 +142,76 @@ export const generatePdf = async (
     }
   }
 
+  console.log('generatePdf: PDF generation complete');
   return pdf;
 };
 
-const rotateSymbol = (symbol: CardSymbol) =>
-  new Promise<CardSymbol>((resolve, reject) => {
-    const image = symbol.image;
-    const buffer = Buffer.from(image.base64src.split(',')[1], 'base64');
-    void Jimp.read(buffer).then(jimpImage => {
-      jimpImage
-        .rotate(symbol.rotation)
-        .getBase64('image/png', (err, base64) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve({
-              ...symbol,
-              image: {
-                ...image,
-                base64src: base64,
-              },
-            });
-          }
-        });
-    });
+/**
+ * Rotates an image using an HTML canvas and returns a data URL.
+ * @param base64src The base64 image source.
+ * @param rotationDegrees The degrees to rotate.
+ */
+function rotateImageUsingCanvas(base64src: string, rotationDegrees: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'Anonymous'; // in case of CORS issues
+    img.onload = () => {
+      // Convert degrees to radians
+      const rad = (rotationDegrees * Math.PI) / 180;
+      // Calculate the new canvas size to fully contain the rotated image
+      const sin = Math.abs(Math.sin(rad));
+      const cos = Math.abs(Math.cos(rad));
+      const newWidth = img.width * cos + img.height * sin;
+      const newHeight = img.width * sin + img.height * cos;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = newWidth;
+      canvas.height = newHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        return reject(new Error('Canvas context not available'));
+      }
+      // Move to the center of the canvas
+      ctx.translate(newWidth / 2, newHeight / 2);
+      // Rotate the canvas
+      ctx.rotate(rad);
+      // Draw the image centered at the origin
+      ctx.drawImage(img, -img.width / 2, -img.height / 2);
+      // Get the rotated image as a base64 string
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = reject;
+    img.src = base64src;
   });
+}
+
+const rotateSymbol = (symbol: CardSymbol): Promise<CardSymbol> => {
+  const image = symbol.image;
+  console.log('rotateSymbol: Starting rotation for symbol with id:', image.id);
+  return rotateImageUsingCanvas(image.base64src, symbol.rotation)
+    .then((rotatedBase64: string) => {
+      console.log('rotateSymbol: Canvas rotation complete for symbol with id:', image.id);
+      return {
+        ...symbol,
+        image: {
+          ...image,
+          base64src: rotatedBase64,
+        },
+      };
+    })
+    .catch((error) => {
+      console.error('rotateSymbol: Error during canvas rotation for symbol with id:', image.id, error);
+      // Fall back to the original symbol if rotation fails
+      return symbol;
+    });
+};
 
 function arrangeSymbolsOnCard(
   card: CardImage[],
   symbolMargin: number,
   n: number,
 ) {
+  console.log('arrangeSymbolsOnCard: Starting arrangement for card with', card.length, 'images');
   const symbols: CardSymbol[] = [];
   // Brute-force it until it will look good :)
   let k1 = 500;
@@ -192,8 +246,9 @@ function arrangeSymbolsOnCard(
   }
 
   if (symbols.length !== n + 1) {
-    throw new Error('Could not generate a possible card layout');
+    throw new Error('arrangeSymbolsOnCard: Could not generate a possible card layout');
   }
+  console.log('arrangeSymbolsOnCard: Finished arrangement with', symbols.length, 'symbols');
   return symbols;
 }
 
@@ -222,7 +277,6 @@ function areThereCollisions(
 
 function getSymbolInRandomPosition(image: CardImage, k2: number, n: number) {
   const size = getRandomImageSize(k2, n);
-
   const s: CardSymbol = {
     x: random(-1, 1 - size, true),
     y: random(-1, 1 - size, true),
