@@ -49,3 +49,11 @@
     }
   }
 }
+@media screen and (max-width:479px) {
+    .buttons .ui {
+        font-size:3.33vw!important;
+    }
+    .ui.primary.button {
+        line-height:2em;
+    }
+}
