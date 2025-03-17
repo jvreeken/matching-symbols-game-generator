@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+/* Global layout */
+#root {
+  @apply flex flex-col min-h-screen;
+}
+#root .pusher {
+  @apply flex-1;
+}
+
+/* Header segment */
+.ui.inverted.vertical.center.aligned.segment.header {
+  @apply bg-gray-900 text-white text-center py-12;
+}
+.ui.text.container {
+  @apply max-w-4xl mx-auto px-4;
+}
+
+/* Header typography */
+.ui.inverted.header.title {
+  @apply text-4xl sm:text-5xl font-normal mb-4;
+}
+.ui.inverted.header.subtitle {
+  @apply text-2xl sm:text-3xl font-normal;
+}
+
+/* Divider and buttons */
+.ui.horizontal.divider {
+  @apply my-8 border-t border-gray-300;
+}
+.ui.huge.buttons {
+  @apply flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4;
+}
+.ui.primary.button,
+.ui.button {
+  @apply px-6 py-3 rounded shadow transition duration-200 ease-in-out hover:shadow-lg;
+}
+.ui.primary.button {
+  @apply bg-blue-600 text-white;
+}
+.ui.button {
+  @apply bg-gray-200 text-gray-800;
+}
+.ui.buttons .or {
+  @apply text-lg font-medium mx-2;
+}
+
+/* Basic segment for image previews */
+.ui.basic.center.aligned.segment {
+  @apply border border-dashed border-gray-300 rounded p-6 my-8;
+}
+.ui.tiny.images {
+  @apply flex flex-wrap justify-center gap-4;
+}
+
+/* Progress segments */
+.ui.raised.center.aligned.segment {
+  @apply bg-white rounded shadow p-6 my-8;
+}
+.ui.blue.top.attached.progress,
+.ui.blue.bottom.attached.progress {
+  @apply bg-blue-500 h-2;
+}
+.ui.blue.top.attached.progress .bar,
+.ui.blue.bottom.attached.progress .bar {
+  @apply bg-blue-700 h-full transition-all duration-300;
+}
+
+/* Instruction header */
+.ui.header.instructions {
+  @apply text-lg font-normal my-4;
+}
+
+/* Footer segment */
+.ui.inverted.vertical.segment.footer {
+  @apply bg-gray-900 text-white text-center py-8;
+}
+.ui.text.center.aligned.container {
+  @apply max-w-3xl mx-auto px-4 text-sm;
+}
+
+/* Additional image preview style */
+.ui.image.preview {
+  cursor: url('./images/ui/remove-cursor.png'), auto;
+}
+
+/* Responsive tweaks for very small screens */
+@media (max-width: 479px) {
+  .buttons .ui {
+    font-size: 3.33vw !important;
+  }
+  .ui.primary.button {
+    line-height: 2em;
+  }
+}
